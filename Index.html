@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Gl0w</title>
+  <style>
+    :root {
+      --bar-h: 38px;
+      --track-h: 5px;
+      --radius: 14px;
+      --glow: 0 0 30px 8px rgba(255,255,255,.85);
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      background: radial-gradient(1200px 600px at 50% -10%, rgba(255,255,255,.08), transparent 60%) #000;
+      color: #fff;
+      font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, 'Helvetica Neue', Arial, 'Courier New', monospace;
+      min-height: 100vh;
+      display: grid;
+      grid-template-rows: auto 1fr auto;
+      align-items: start;
+      justify-items: center;
+      gap: 16px;
+      padding: clamp(12px, 2vw, 24px);
+    }
+
+    /* ASCII Title */
+    .ascii-title {
+      width: min(92vw, 980px);
+      text-align: center;
+      white-space: pre;
+      font-family: 'Courier New', monospace;
+      font-size: clamp(10px, 1.4vw, 16px);
+      line-height: 1.06;
+      margin: 0;
+      padding: 8px 10px;
+      color: #f7f7f7;
+      text-shadow: 0 0 6px rgba(255,255,255,.6), 0 0 18px rgba(255,255,255,.25);
+      user-select: none;
+    }
+    .ascii-title pre { margin: 0; }
+
+    /* Player */
+    .player {
+      width: min(86vw, 900px);
+      position: relative;
+      border-radius: var(--radius);
+      overflow: hidden;
+      background: #000;
+      box-shadow: var(--glow);
+      outline: 1px solid rgba(255,255,255,.08);
+    }
+    video {
+      width: 100%;
+      display: block;
+      background: #000;
+      aspect-ratio: 16 / 9;
+      object-fit: cover;
+    }
+
+    /* Controls */
+    .controls {
+      position: absolute; left: 0; right: 0; bottom: 0;
+      height: var(--bar-h);
+      display: grid;
+      grid-template-columns: auto auto 1fr auto;
+      align-items: center;
+      gap: 10px;
+      padding: 0 12px;
+      color: #fff;
+      background: linear-gradient(to top, rgba(0,0,0,.72), rgba(0,0,0,0));
+      backdrop-filter: blur(6px);
+      -webkit-backdrop-filter: blur(6px);
+      transition: opacity .2s ease;
+    }
+    .player.not-hover .controls { opacity: 0; pointer-events: none; }
+
+    .btn {
+      appearance: none;
+      border: none;
+      background: none;
+      color: #fff;
+      cursor: pointer;
+      padding: 6px 10px;
+      border-radius: 8px;
+      font-size: 16px;
+      line-height: 1;
+      transition: background .15s ease, transform .06s ease;
+    }
+    .btn:hover { background: rgba(255,255,255,.08); }
+    .btn:active { transform: translateY(1px); }
+    .btn:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
+
+    .time {
+      font-variant-numeric: tabular-nums;
+      font-size: 13px;
+      opacity: .92;
+      white-space: nowrap;
+      padding-inline: 2px;
+    }
+
+    .progress {
+      position: relative;
+      height: var(--track-h);
+      background: rgba(255,255,255,.22);
+      border-radius: 999px;
+      cursor: pointer;
+      overflow: hidden;
+      box-shadow: inset 0 0 0 1px rgba(255,255,255,.12);
+    }
+    .progress > div { position: absolute; top: 0; left: 0; height: 100%; border-radius: 999px; }
+    .buffered { background: rgba(255,255,255,.35); width: 0%; }
+    .filled   { background: #fff; width: 0%; }
+    .thumb {
+      width: 12px; height: 12px;
+      top: 50%; transform: translate(-6px, -50%);
+      background: #fff; border-radius: 50%;
+      box-shadow: 0 0 6px rgba(255,255,255,.9);
+      display: none;
+    }
+    .player:hover .thumb, .dragging .thumb { display: block; }
+
+    :fullscreen .player, .player:fullscreen { width: 100vw; height: 100vh; border-radius: 0; box-shadow: none; }
+    :fullscreen video, .player:fullscreen video { height: 100%; object-fit: contain; }
+
+    /* Footer (normal text) */
+    .footer {
+      font-size: 14px;
+      color: #e8e8e8;
+      opacity: .95;
+      text-align: center;
+    }
+    .footer a {
+      color: #bcd9ff;
+      text-decoration: none;
+      border-bottom: 1px dashed rgba(188,217,255,.45);
+      padding-bottom: 1px;
+    }
+    .footer a:hover { color: #e7f1ff; border-bottom-color: rgba(231,241,255,.85); }
+  </style>
+</head>
+<body>
+
+  <!-- ASCII ART -->
+  <div class="ascii-title"><pre>
+  ▄████  ██▓     ▒█████   █     █░
+ ██▒ ▀█▒▓██▒    ▒██▒  ██▒▓█░ █ ░█░
+▒██░▄▄▄░▒██░    ▒██░  ██▒▒█░ █ ░█ 
+░▓█  ██▓▒██░    ▒██   ██░░█░ █ ░█ 
+░▒▓███▀▒░██████▒░ ████▓▒░░░██▒██▓ 
+ ░▒   ▒ ░ ▒░▓  ░░ ▒░▒░▒░ ░ ▓░▒ ▒  
+  ░   ░ ░ ░ ▒  ░  ░ ▒ ▒░   ▒ ░ ░  
+░ ░   ░   ░ ░   ░ ░ ░ ▒    ░   ░  
+      ░     ░  ░    ░ ░      ░    
+  </pre></div>
+
+  <!-- PLAYER -->
+  <div class="player not-hover" id="player">
+    <video id="video" autoplay muted playsinline loop preload="auto" tabindex="-1">
+      <source src="c.mp4" type="video/mp4"/>
+      Your browser does not support the video tag.
+    </video>
+
+    <div class="controls" id="controls">
+      <button class="btn" id="playBtn" aria-label="Play/Pause">▶</button>
+      <div class="time" id="time">0:00 / 0:00</div>
+      <div class="progress" id="progress" aria-label="Seek">
+        <div class="buffered" id="buffered"></div>
+        <div class="filled" id="filled"></div>
+        <div class="thumb" id="thumb"></div>
+      </div>
+      <button class="btn" id="fsBtn" aria-label="Fullscreen">⛶</button>
+      <!-- (No sound button on purpose) -->
+    </div>
+  </div>
+
+  <!-- NORMAL CREDIT / DISCORD -->
+  <div class="footer">
+    Made by  <a href="https://discord.gg/EliteMarket" target="_blank" rel="noopener">Gl0w</a>
+    Join us: <a href="https://discord.gg/EliteMarket" target="_blank" rel="noopener">.gg/EliteMarket</a>
+  </div>
+
+  <!-- BACKGROUND MUSIC — attempts autoplay; falls back to first click/tap -->
+  <audio id="bg-music" autoplay loop>
+    <source src="music.mp3" type="audio/mpeg">
+    Your browser does not support the audio element.
+  </audio>
+
+  <script>
+    const player   = document.getElementById('player');
+    const video    = document.getElementById('video');
+    const playBtn  = document.getElementById('playBtn');
+    const fsBtn    = document.getElementById('fsBtn');
+    const timeEl   = document.getElementById('time');
+    const progress = document.getElementById('progress');
+    const filled   = document.getElementById('filled');
+    const buffered = document.getElementById('buffered');
+    const thumb    = document.getElementById('thumb');
+    const music    = document.getElementById('bg-music');
+
+    let dragging = false;
+
+    // --- Helpers ---
+    const fmt = s => {
+      s = Math.max(0, Math.floor(s));
+      const m = Math.floor(s / 60), sec = s % 60;
+      return `${m}:${sec.toString().padStart(2,'0')}`;
+    };
+    function updateTimeUI() {
+      const cur = video.currentTime || 0;
+      const dur = isFinite(video.duration) ? video.duration : 0;
+      timeEl.textContent = `${fmt(cur)} / ${fmt(dur)}`;
+    }
+    function updateBuffered() {
+      if (!video.buffered || video.buffered.length === 0 || !isFinite(video.duration)) return;
+      const end = video.buffered.end(video.buffered.length - 1);
+      buffered.style.width = (end / video.duration) * 100 + '%';
+    }
+    function updateProgressUI() {
+      if (!isFinite(video.duration)) return;
+      const pct = (video.currentTime / video.duration) * 100;
+      filled.style.width = pct + '%';
+      const thumbX = progress.clientWidth * (pct / 100);
+      thumb.style.left = thumbX + 'px';
+      updateTimeUI();
+    }
+    function setBtnIcon() { playBtn.textContent = video.paused ? '▶' : '⏸'; }
+
+    // --- Play / Pause (video + keep music in sync) ---
+    playBtn.addEventListener('click', async () => {
+      if (video.paused) {
+        await video.play();
+        try { await music.play(); } catch(_) {}
+      } else {
+        video.pause();
+        music.pause();
+      }
+    });
+    video.addEventListener('play', setBtnIcon);
+    video.addEventListener('pause', setBtnIcon);
+    video.addEventListener('click', () => playBtn.click());
+
+    // --- Seek ---
+    const seek = (clientX) => {
+      const rect = progress.getBoundingClientRect();
+      const ratio = Math.min(1, Math.max(0, (clientX - rect.left) / rect.width));
+      if (isFinite(video.duration)) video.currentTime = ratio * video.duration;
+    };
+    progress.addEventListener('pointerdown', (e) => {
+      dragging = true;
+      player.classList.add('dragging');
+      seek(e.clientX);
+      progress.setPointerCapture(e.pointerId);
+    });
+    progress.addEventListener('pointermove', (e) => { if (dragging) seek(e.clientX); });
+    progress.addEventListener('pointerup',   (e) => {
+      dragging = false;
+      player.classList.remove('dragging');
+      progress.releasePointerCapture(e.pointerId);
+    });
+
+    // --- Fullscreen ---
+    fsBtn.addEventListener('click', () => {
+      if (document.fullscreenElement) document.exitFullscreen?.();
+      else player.requestFullscreen?.();
+    });
+
+    // --- Time / Buffer updates ---
+    video.addEventListener('timeupdate', updateProgressUI);
+    video.addEventListener('durationchange', () => { updateTimeUI(); updateBuffered(); });
+    video.addEventListener('progress', updateBuffered);
+    video.addEventListener('loadedmetadata', () => { updateTimeUI(); updateBuffered(); });
+
+    // --- Keyboard shortcuts ---
+    window.addEventListener('keydown', (e) => {
+      if (['INPUT','TEXTAREA'].includes(document.activeElement.tagName)) return;
+      if (e.code === 'Space')        { e.preventDefault(); playBtn.click(); }
+      if ((e.key||'').toLowerCase()==='f') { fsBtn.click(); }
+      if (e.key === 'ArrowRight')    { video.currentTime = Math.min((video.currentTime||0)+5, video.duration||0); }
+      if (e.key === 'ArrowLeft')     { video.currentTime = Math.max((video.currentTime||0)-5, 0); }
+    });
+
+    // --- Auto-hide controls (like native) ---
+    let hoverTimeout;
+    const setHover = (on) => {
+      clearTimeout(hoverTimeout);
+      if (on) player.classList.remove('not-hover');
+      else hoverTimeout = setTimeout(() => player.classList.add('not-hover'), 1200);
+    };
+    player.addEventListener('mousemove', () => setHover(true));
+    player.addEventListener('mouseleave', () => setHover(false));
+    setHover(false);
+
+    // --- Ensure video always muted ---
+    video.muted = true;
+
+    // --- Try to autoplay music, and if blocked, start on first interaction ---
+    (async () => {
+      try {
+        await music.play(); // may be blocked, that's okay
+      } catch (_) {
+        const startMusicOnce = async () => {
+          try { await music.play(); } catch(_) {}
+          document.removeEventListener('pointerdown', startMusicOnce);
+          document.removeEventListener('keydown', startMusicOnce);
+        };
+        document.addEventListener('pointerdown', startMusicOnce, { once: true });
+        document.addEventListener('keydown', startMusicOnce, { once: true });
+      }
+    })();
+  </script>
+</body>
+</html>
